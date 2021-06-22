@@ -1,0 +1,221 @@
+---
+title: "text testing"
+author: "Meghan Mokate"
+date: "6/15/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, include = FALSE}
+library(tidyverse)
+library(XLConnect)
+library(xlsx)
+library(ggalt)
+library(forcats)
+```
+
+## Reading in pdfs
+
+```{r load files, warning=FALSE}
+# reference source of pdf files
+filenames <- list.files("/Users/meghanmokate/Desktop/dated date/pdftotext (2)", pattern="*.txt", full.names=TRUE)
+
+## allows to match file name by index, to join back to main dataset later
+file_details <- as.data.frame(t(filenames)) %>%
+  pivot_longer(cols = 1:10) %>%
+  mutate(name = str_sub(name, 2, 10))
+
+# read in the files to a dataset
+files <- lapply(filenames, read.delim)
+```
+
+```{r security function, warning = FALSE}
+# function to find references to security and pull that line and the next 5 lines
+security <- function(x) { 
+  sec_result <- x %>%
+    rename(value = 1) %>%
+    mutate(security = ifelse(grepl("Security for the Bond", value, ignore.case=TRUE), value, "no")) %>%
+    mutate(security = ifelse(lag(security) != "no", "yes",
+                           ifelse(lag(n = 2, security != "no"), "yes", 
+                                  ifelse(lag(n = 3, security != "no"), "yes",
+                                         ifelse(lag(n = 4, security != "no"), "yes",
+                                                ifelse(lag(n = 5, security != "no"), "yes", security)))))) %>%
+    filter(security != "no") %>%
+    mutate(group = ifelse(security != "yes", security, lag(security))) %>%
+    mutate(group = ifelse(group != "yes", group, lag(group))) %>%
+    mutate(group = ifelse(group != "yes", group, lag(group))) %>%
+    mutate(group = ifelse(group != "yes", group, lag(group))) %>%
+    mutate(group = ifelse(group != "yes", group, lag(group))) %>%
+    select(-security) %>%
+    pivot_wider(names_from = c(group), 
+                values_from = c(value)) %>%
+    try({
+    mutate(grouping = ifelse(str_detect(`SECURITY FOR THE BONDS`, 'ad valorem taxes'), "ad valorem taxes", "")) # one kind of mapping, there may end up being more
+      }) %>%
+    pivot_longer(everything(),
+                 names_to = "security_results_group",
+                 values_to = "security_results") %>%
+    select(-security_results_group) %>%
+    rename(value = security_results) %>%
+    mutate(finding = "security")
+  return(sec_result)
+}
+```
+
+```{r federal tax function}
+federal_tax <- function(x) { # need function(x, i) if including file name
+  fed_tax <- x %>%
+    rename(value = 1) %>%
+    mutate(tax_matters = ifelse(grepl("TAX MATTERS .", value, ignore.case=TRUE), value, "no")) %>% # review if this captures
+    mutate(tax_matters = ifelse(lag(tax_matters) != "no", "yes",
+                           ifelse(lag(n = 2, tax_matters != "no"), "yes", 
+                                  ifelse(lag(n = 3, tax_matters != "no"), "yes",
+                                         ifelse(lag(n = 4, tax_matters != "no"), "yes",
+                                                ifelse(lag(n = 5, tax_matters != "no"), "yes", tax_matters)))))) %>%
+    filter(tax_matters != "no") %>%
+    mutate(group = ifelse(tax_matters != "yes", tax_matters, lag(tax_matters))) %>%
+    mutate(group = ifelse(group != "yes", group, lag(group))) %>%
+    mutate(group = ifelse(group != "yes", group, lag(group))) %>%
+    mutate(group = ifelse(group != "yes", group, lag(group))) %>%
+    mutate(group = ifelse(group != "yes", group, lag(group))) %>%
+    select(-tax_matters) %>%
+    pivot_wider(names_from = c(group), 
+                values_from = c(value)) %>%
+    pivot_longer(everything(),
+                 names_to = "tax_results_group",
+                 values_to = "tax_results") %>%
+    select(-tax_results_group) %>%
+    rename(value = tax_results) %>%
+    mutate(finding = "tax")
+  return(fed_tax)
+}
+```
+
+```{r}
+funds <- function(x) { 
+  funds_result <- x %>%
+    rename(value = 1) %>%
+    mutate(funds = ifelse(grepl("sources and uses of funds|Authorization and Purpose|Plan of Refunding", value, ignore.case=TRUE), value, "no")) %>%
+    mutate(funds = ifelse(lag(funds) != "no", "yes",
+                           ifelse(lag(n = 2, funds != "no"), "yes", 
+                                  ifelse(lag(n = 3, funds != "no"), "yes",
+                                         ifelse(lag(n = 4, funds != "no"), "yes",
+                                                ifelse(lag(n = 5, funds != "no"), "yes", 
+                                                       ifelse(lag(n = 6, funds != "no"), "yes",
+                                                              ifelse(lag(n = 7, funds != "no"), "yes",
+                                                                     ifelse(lag(n = 8, funds != "no"), "yes",
+                                                                            ifelse(lag(n = 9, funds != "no"), "yes",
+                                                                                   ifelse(lag(n = 10, funds != "no"), "yes",
+                                                                                          ifelse(lag(n = 11, funds != "no"), "yes",
+                                                                                                 ifelse(lag(n = 12, funds != "no"), "yes",
+                                                                                                        ifelse(lag(n = 13, funds != "no"), "yes",
+                                                                                                               ifelse(lag(n = 14, funds != "no"), "yes",
+                                                                                                                      ifelse(lag(n = 15, funds != "no"), "yes",
+                                                                                                                             ifelse(lag(n = 16, funds != "no"), "yes",
+                                                                                                                                    ifelse(lag(n = 17, funds != "no"), "yes",
+                                                                                                                                           ifelse(lag(n = 18, funds != "no"), "yes",
+                                                                                                                                                  ifelse(lag(n = 19, funds != "no"), "yes",
+                                                                                                                                                         ifelse(lag(n = 20, funds != "no"), "yes",
+                                                                                                                                                                ifelse(lag(n = 21, funds != "no"), "yes",
+                                                                                                                                                                       ifelse(lag(n = 22, funds != "no"), "yes",
+                                                                                                                                                                              ifelse(lag(n = 23, funds != "no"), "yes",
+                                                                                                                                                                                     ifelse(lag(n = 24, funds != "no"), "yes",
+                                                                                                                                                                                            ifelse(lag(n = 25, funds != "no"), "yes",
+                                                                                                                             funds)))))))))))))))))))))))))) %>%
+    filter(funds != "no") %>%
+    mutate(group = ifelse(funds != "yes", funds, lag(funds))) %>%
+    mutate(group = ifelse(group != "yes", group, lag(group))) %>%
+    mutate(group = ifelse(group != "yes", group, lag(group))) %>%
+    mutate(group = ifelse(group != "yes", group, lag(group))) %>%
+    mutate(group = ifelse(group != "yes", group, lag(group))) %>%
+    mutate(group = ifelse(group != "yes", group, lag(group))) %>%
+    mutate(group = ifelse(group != "yes", group, lag(group))) %>%
+    mutate(group = ifelse(group != "yes", group, lag(group))) %>%
+    mutate(group = ifelse(group != "yes", group, lag(group))) %>%
+    mutate(group = ifelse(group != "yes", group, lag(group))) %>%
+    mutate(group = ifelse(group != "yes", group, lag(group))) %>%
+    mutate(group = ifelse(group != "yes", group, lag(group))) %>%
+    mutate(group = ifelse(group != "yes", group, lag(group))) %>%
+    mutate(group = ifelse(group != "yes", group, lag(group))) %>%
+    mutate(group = ifelse(group != "yes", group, lag(group))) %>%
+    mutate(group = ifelse(group != "yes", group, lag(group))) %>%
+    mutate(group = ifelse(group != "yes", group, lag(group))) %>%
+    mutate(group = ifelse(group != "yes", group, lag(group))) %>%
+    mutate(group = ifelse(group != "yes", group, lag(group))) %>%
+    mutate(group = ifelse(group != "yes", group, lag(group))) %>%
+    mutate(group = ifelse(group != "yes", group, lag(group))) %>%
+    mutate(group = ifelse(group != "yes", group, lag(group))) %>%
+    mutate(group = ifelse(group != "yes", group, lag(group))) %>%
+    mutate(group = ifelse(group != "yes", group, lag(group))) %>%
+    mutate(group = ifelse(group != "yes", group, lag(group))) %>%
+    mutate(group = ifelse(group != "yes", group, lag(group))) %>%
+    mutate(group = ifelse(group != "yes", group, lag(group))) %>%
+    select(-funds) %>%
+    pivot_wider(names_from = c(group), 
+                values_from = c(value)) %>%
+    pivot_longer(everything(),
+                 names_to = "funds_results_group",
+                 values_to = "funds_results") %>%
+    select(-funds_results_group) %>%
+    rename(value = funds_results) %>%
+    mutate(finding = "funds") 
+  return(funds_result)
+}
+```
+
+
+```{r execute functions, warning = FALSE}
+for (i in 1:length(files)) {
+  sec_1 <- security(files[[i]])
+  sec_1$name <- i
+  securities <- as.data.frame(sec_1)
+  tm_1 <- federal_tax(files[[i]])
+  tm_1$name <- i
+  tax_matters <- as.data.frame(tm_1)
+  funds_1 <- funds(files[[i]])
+  funds_1$name <- i
+  funds_details <- as.data.frame(funds_1)
+  assign(paste0("securities_", i), securities)
+  assign(paste0("tax_matters_", i), tax_matters)
+  assign(paste0("funds_", i), funds_details)
+}
+
+# need to add more variables as list of pdf items grows
+join_info <- function(x, y, z) {
+ joined_sets <-
+  rbind(x, y, z)
+ return(joined_sets)
+}
+
+for (i in 1:length(files)) {
+ x = sym(paste0("securities_", i))
+ y = sym(paste0("tax_matters_", i)) 
+ z = sym(paste0("funds_", i)) 
+ joined_info <- as.data.frame(join_info(eval(x), eval(y), eval(z)))
+ assign(paste0("all_data_", i), joined_info)
+}
+
+for (i in 1:length(files)) {
+ x = sym(paste0("securities_", i))
+ y = sym(paste0("tax_matters_", i)) 
+ z = sym(paste0("funds_", i)) 
+ joined_info <- as.data.frame(join_info(eval(x), eval(y), eval(z)))
+ assign(paste0("all_data_", i), joined_info)
+}
+
+
+pdf_findings = rbind(all_data_1, all_data_2, all_data_3, all_data_4, all_data_5,
+                     all_data_6, all_data_7, all_data_8, all_data_9, all_data_10) %>%
+  pivot_wider(names_from = finding,
+              values_from = value) %>%
+  mutate(name = as.character(name))
+
+pdf_output <-
+  left_join(pdf_findings, file_details) %>%
+  rename(pdf_path = value)
+```
+
+
